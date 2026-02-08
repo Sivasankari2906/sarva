@@ -1,0 +1,242 @@
+# 🚀 SARVA - QUICK START GUIDE
+
+## ✅ Step-by-Step Setup (15 minutes)
+
+### 1️⃣ Install Dependencies
+```bash
+cd Sarva
+npm install
+```
+
+### 2️⃣ Create Firebase Project
+1. Go to https://console.firebase.google.com
+2. Click "Add Project"
+3. Name it "Sarva" (or any name)
+4. Disable Google Analytics (optional)
+5. Click "Create Project"
+
+### 3️⃣ Enable Firebase Services
+
+**Enable Authentication:**
+1. In Firebase Console, go to "Authentication"
+2. Click "Get Started"
+3. Enable "Email/Password" sign-in method
+
+**Enable Firestore:**
+1. Go to "Firestore Database"
+2. Click "Create Database"
+3. Start in "Test Mode" (we'll add rules later)
+4. Choose a location (closest to you)
+
+### 4️⃣ Get Firebase Config
+1. Go to Project Settings (gear icon)
+2. Scroll to "Your apps" section
+3. Click Web icon (</>)
+4. Register app (name: "Sarva Web")
+5. Copy the firebaseConfig object
+
+### 5️⃣ Configure Environment
+```bash
+# Create .env file
+cp .env.example .env
+```
+
+Edit `.env` and paste your Firebase config:
+```
+REACT_APP_FIREBASE_API_KEY=AIzaSy...
+REACT_APP_FIREBASE_AUTH_DOMAIN=sarva-xxx.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sarva-xxx
+REACT_APP_FIREBASE_STORAGE_BUCKET=sarva-xxx.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=123456789
+REACT_APP_FIREBASE_APP_ID=1:123456789:web:abc123
+```
+
+### 6️⃣ Seed Sample Schemes
+1. Go to Firebase Console > Firestore Database
+2. Click "Start Collection"
+3. Collection ID: `schemes`
+4. Add these 3 sample schemes:
+
+**Document 1:**
+- Document ID: `pm-kisan`
+- Fields:
+  ```
+  name: "PM-KISAN"
+  description: "Income support to farmer families"
+  state: "ALL"
+  category: "Agriculture"
+  eligibilityCriteria: (map)
+    - occupations: (array) ["Farmer"]
+    - maxIncome: (number) 200000
+    - requiredDocs: (array) ["Aadhaar", "Ration Card"]
+  ```
+
+**Document 2:**
+- Document ID: `ayushman-bharat`
+- Fields:
+  ```
+  name: "Ayushman Bharat"
+  description: "Health insurance scheme"
+  state: "ALL"
+  category: "Health"
+  eligibilityCriteria: (map)
+    - maxIncome: (number) 500000
+    - requiredDocs: (array) ["Aadhaar", "Ration Card"]
+  ```
+
+**Document 3:**
+- Document ID: `pension-senior`
+- Fields:
+  ```
+  name: "Senior Citizen Pension"
+  description: "Monthly pension for seniors"
+  state: "ALL"
+  category: "Social Welfare"
+  eligibilityCriteria: (map)
+    - minAge: (number) 60
+    - maxIncome: (number) 300000
+    - requiredDocs: (array) ["Aadhaar", "Income Certificate"]
+  ```
+
+### 7️⃣ Deploy Firestore Rules
+```bash
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login
+firebase login
+
+# Initialize (select Firestore and Hosting)
+firebase init
+
+# Deploy rules
+firebase deploy --only firestore:rules
+```
+
+### 8️⃣ Run Development Server
+```bash
+npm start
+```
+
+Opens at http://localhost:3000
+
+---
+
+## 🎯 Test the Application
+
+### Test Flow:
+1. **Sign Up**: Create account with email/password
+2. **Complete Profile**:
+   - Age: 25
+   - Income: 150000
+   - Occupation: Farmer
+   - State: Karnataka
+3. **Add Documents**:
+   - Aadhaar (expiry: 1 year from now)
+   - Ration Card (expiry: 6 months from now)
+4. **View Dashboard**: Should show PM-KISAN as eligible
+5. **Check Alerts**: Should show Ration Card expiring in 6 months
+6. **Add Medicine**: Test medicine tracking
+
+---
+
+## 🐛 Common Issues
+
+**Issue: "Firebase not defined"**
+- Solution: Check .env file exists and has correct values
+- Restart dev server after editing .env
+
+**Issue: "Permission denied" in Firestore**
+- Solution: Deploy firestore.rules using `firebase deploy --only firestore:rules`
+
+**Issue: No schemes showing**
+- Solution: Manually add schemes in Firebase Console (step 6)
+
+**Issue: npm install fails**
+- Solution: Delete node_modules and package-lock.json, run `npm install` again
+
+---
+
+## 📦 Project Structure
+
+```
+Sarva/
+├── public/
+│   └── index.html
+├── src/
+│   ├── components/
+│   │   └── Header.js
+│   ├── pages/
+│   │   ├── Login.js
+│   │   ├── Dashboard.js
+│   │   ├── Profile.js
+│   │   ├── Documents.js
+│   │   ├── Medicines.js
+│   │   └── Schemes.js
+│   ├── hooks/
+│   │   ├── useAuth.js
+│   │   └── useEligibility.js
+│   ├── services/
+│   │   ├── firebase.js
+│   │   ├── firestoreService.js
+│   │   └── eligibilityEngine.js
+│   ├── App.js
+│   ├── index.js
+│   └── index.css
+├── .env
+├── .gitignore
+├── package.json
+├── firestore.rules
+├── firebase.json
+├── README.md
+└── ARCHITECTURE.md
+```
+
+---
+
+## 🚀 Deploy to Production
+
+```bash
+# Build production bundle
+npm run build
+
+# Deploy to Firebase Hosting
+firebase deploy --only hosting
+```
+
+Your app will be live at: `https://your-project-id.web.app`
+
+---
+
+## 💡 Key Features to Demo
+
+1. **Dependency Mapping**: Show how expiring Aadhaar affects multiple schemes
+2. **Impact Prioritization**: Demonstrate "What You'll Lose Next" section
+3. **Real-time Eligibility**: Change profile and see schemes update instantly
+4. **Offline Support**: Disconnect internet, app still works
+5. **Medicine Continuity**: Add chronic medicine and show tracking
+
+---
+
+## 📚 Next Steps
+
+1. ✅ Complete basic setup (above)
+2. 🎨 Customize UI/styling
+3. 📊 Add more schemes for your state
+4. 🔔 Implement push notifications (optional)
+5. 📱 Make responsive for mobile
+6. 🧪 Add unit tests
+7. 🚀 Deploy to production
+
+---
+
+## 🆘 Need Help?
+
+- Check ARCHITECTURE.md for detailed documentation
+- Review Firebase Console for data structure
+- Test with sample data first
+- Use browser DevTools Console for errors
+
+---
+
+**Ready to build? Run `npm install` and follow steps above!** 🎉
