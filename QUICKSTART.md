@@ -240,3 +240,22 @@ Your app will be live at: `https://your-project-id.web.app`
 ---
 
 **Ready to build? Run `npm install` and follow steps above!** 🎉
+
+## Security rules and the scheme catalogue
+
+`firestore.rules` lets each signed-in user read and write only their own profile, documents, medicines and derived data. Any signed-in user can read the scheme catalogue, and nobody can change it from the app. Deploy the rules with:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+Because the app cannot write to `schemes`, add or edit schemes in the Firebase console, or with the Admin SDK.
+
+## Local testing with the Firebase emulators
+
+```bash
+firebase emulators:start --only auth,firestore --project demo-sarva
+REACT_APP_USE_EMULATOR=true REACT_APP_FIREBASE_API_KEY=fake REACT_APP_FIREBASE_PROJECT_ID=demo-sarva npm start
+```
+
+With `REACT_APP_USE_EMULATOR=true` the app talks to the local Auth (port 9099) and Firestore (port 8088) emulators instead of a real project, so test data never reaches production.

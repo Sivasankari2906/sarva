@@ -8,6 +8,18 @@ export default function Schemes() {
 
   if (loading || !user) return <div className="container">Loading schemes...</div>;
 
+  // Schemes are loaded for the state in the profile, so there is nothing to show until it is filled in.
+  if (schemes.length === 0) {
+    return (
+      <div className="container">
+        <h1 style={{ marginBottom: '24px' }}>Government Schemes</h1>
+        <div className="card">
+          <p style={{ color: '#718096' }}>Complete your profile (including your state) to see which schemes you are eligible for.</p>
+        </div>
+      </div>
+    );
+  }
+
   const eligibleSchemes = schemes.filter(s => eligibility?.eligible.includes(s.id));
   const ineligibleSchemes = schemes.filter(s => eligibility?.ineligible.includes(s.id));
 

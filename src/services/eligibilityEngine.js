@@ -18,7 +18,8 @@ export const calculateEligibility = (userProfile, documents, medicines, schemes)
 
 // Check if user meets scheme criteria
 const isEligibleForScheme = (profile, documents, scheme) => {
-  const criteria = scheme.eligibilityCriteria;
+  // A scheme without criteria should not break eligibility for every other scheme.
+  const criteria = scheme.eligibilityCriteria || {};
   
   // Age check
   if (criteria.minAge && profile.age < criteria.minAge) return false;
@@ -100,7 +101,7 @@ const findAffectedSchemes = (document, schemes, eligibleSchemeIds) => {
   return schemes
     .filter(scheme => 
       eligibleSchemeIds.includes(scheme.id) &&
-      scheme.eligibilityCriteria.requiredDocs?.includes(document.type)
+      scheme.eligibilityCriteria?.requiredDocs?.includes(document.type)
     )
     .map(scheme => ({ id: scheme.id, name: scheme.name }));
 };
