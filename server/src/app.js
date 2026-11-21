@@ -6,7 +6,7 @@ import { OtpStore, normalizePhone } from './otp.js';
  * OTP API. Every /otp route needs a valid Firebase ID token (Authorization: Bearer <token>),
  * verified with the Firebase Admin SDK, so only signed-in Sarva users can request codes.
  */
-export function createApp({ verifyIdToken, sendSms, allowedOrigins = [], store = new OtpStore(), countryCode = '+91' }) {
+export function createApp({ verifyIdToken, sendSms, recordVerification, allowedOrigins = [], store = new OtpStore(), countryCode = '+91', requireVerifiedEmail = false }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '2kb' }));
@@ -21,6 +21,9 @@ export function createApp({ verifyIdToken, sendSms, allowedOrigins = [], store =
     if (!token || !verifyIdToken) return res.status(401).json({ message: 'Sign in first.' });
     try {
       const decoded = await verifyIdToken(token);
+      if (requireVerifiedEmail && decoded.email_verified !== true) {
+        return res.status(403).json({ message: 'Verify your email address first.' });
+      }
       req.uid = decoded.uid;
       return next();
     } catch {
@@ -42,13 +45,21 @@ export function createApp({ verifyIdToken, sendSms, allowedOrigins = [], store =
     return res.json({ sent: true });
   });
 
-  app.post('/otp/verify', requireUser, (req, res) => {
+  app.post('/otp/verify', requireUser, async (req, res) => {
     const phone = normalizePhone(req.body?.phone, countryCode);
     if (!phone || !/^[0-9]{6}$/.test(String(req.body?.otp ?? ''))) {
       return res.status(400).json({ message: 'Enter the 6-digit code.' });
     }
-    const verified = store.check(req.uid, phone, req.body.otp);
-    return verified ? res.json({ verified: true }) : res.status(400).json({ verified: false, message: 'Invalid or expired code.' });
+    if (!store.check(req.uid, phone, req.body.otp)) {
+      return res.status(400).json({ verified: false, message: 'Invalid or expired code.' });
+    }
+    // Record the proof that the Firestore rules check before a document can be marked verified.
+    try {
+      if (recordVerification) await recordVerification(req.uid, phone);
+    } catch {
+      return res.status(503).json({ message: 'Could not save the verification. Try again.' });
+    }
+    return res.json({ verified: true, phone });
   });
 
   return app;

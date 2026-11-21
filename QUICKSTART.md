@@ -262,7 +262,7 @@ With `REACT_APP_USE_EMULATOR=true` the app talks to the local Auth (port 9099) a
 
 ## SMS verification codes
 
-Document verification sends a real SMS code when the app is built with `REACT_APP_OTP_SERVER_URL` pointing at the OTP server in `server/` (see `server/README.md`). Without it the app runs in demo mode and shows the code on screen.
+Document verification sends a real SMS code when the app is built with `REACT_APP_OTP_SERVER_URL` pointing at the OTP server in `server/` (see `server/README.md`). Without it, documents are saved as Not Verified; the app never shows a code on screen. A document can only be marked verified when the server has recorded the phone verification (enforced by `firestore.rules`).
 
 ## Scheme catalogue (4,693 schemes)
 

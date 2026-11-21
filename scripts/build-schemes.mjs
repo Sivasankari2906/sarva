@@ -19,6 +19,11 @@ const rows = parse(fs.readFileSync(csvPath), { columns: true, skip_empty_lines: 
 const mapped = rows.map(mapRow).filter(Boolean);
 const { allIndia, byState } = groupByState(mapped);
 
+// Only replace a folder that is empty or was written by this script before.
+if (fs.existsSync(outDir) && fs.readdirSync(outDir).length && !fs.existsSync(path.join(outDir, 'manifest.json'))) {
+  console.error(`Refusing to overwrite ${outDir}: it is not empty and has no manifest.json from a previous build.`);
+  process.exit(1);
+}
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(path.join(outDir, 'states'), { recursive: true });
 fs.writeFileSync(path.join(outDir, 'all-india.json'), JSON.stringify(allIndia));

@@ -21,4 +21,8 @@ async function call(path, body) {
 }
 
 export const sendSmsOtp = (phone) => call('/otp/send', { phone });
-export const verifySmsOtp = async (phone, otp) => (await call('/otp/verify', { phone, otp })).verified === true;
+/** Returns { verified, phone } where phone is the normalized number the server recorded. */
+export const verifySmsOtp = async (phone, otp) => {
+  const data = await call('/otp/verify', { phone, otp });
+  return { verified: data.verified === true, phone: data.phone };
+};

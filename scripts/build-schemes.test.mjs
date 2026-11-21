@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { mapRow, parseList, canonicalState, groupByState } from './schemes-mapping.mjs';
+import { mapRow, parseList, canonicalState, groupByState, safeGovUrl } from './schemes-mapping.mjs';
 
 const row = (o) => ({ slug: 'x', name: 'X', description: 'd', state: 'Central', eligibility_state: '["All"]', ...o });
 
@@ -69,4 +69,25 @@ test('the build script writes a manifest, all-India and per-state files', () => 
   assert.equal(manifest.states['Tamil Nadu'], 'tamil-nadu');
   assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'all-india.json')))[0].name, 'PM-KISAN');
   assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'states', 'tamil-nadu.json')))[0].eligibilityCriteria.gender, 'female');
+});
+
+test('only official government links are kept', () => {
+  assert.equal(safeGovUrl('https://www.myscheme.gov.in/schemes/pm-kisan'), 'https://www.myscheme.gov.in/schemes/pm-kisan');
+  assert.equal(safeGovUrl('https://pmkisan.gov.in/'), 'https://pmkisan.gov.in/');
+  assert.equal(safeGovUrl('https://tn.nic.in/scheme'), 'https://tn.nic.in/scheme');
+  assert.equal(safeGovUrl('https://www.myscheme.gov.in@evil.example/'), '', 'user-info trick');
+  assert.equal(safeGovUrl('https://evil.example/myscheme.gov.in'), '');
+  assert.equal(safeGovUrl('https://fakegov.in/'), '');
+  assert.equal(safeGovUrl('javascript:alert(1)'), '');
+});
+
+test('the build script refuses to wipe an unrelated folder', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'schemes-guard-'));
+  fs.writeFileSync(path.join(dir, 'important.txt'), 'keep me');
+  const csv = path.join(os.tmpdir(), 'one-row.csv');
+  fs.writeFileSync(csv, 'slug,name\na,A\n');
+  let failed = false;
+  try { execFileSync('node', [path.join(path.dirname(new URL(import.meta.url).pathname), 'build-schemes.mjs'), csv, dir], { stdio: 'pipe' }); } catch { failed = true; }
+  assert.ok(failed);
+  assert.ok(fs.existsSync(path.join(dir, 'important.txt')));
 });

@@ -113,3 +113,80 @@ test('textbee sender posts the right request and is off without a key', async ()
   const failing = createTextbeeSender({ apiKey: 'k', fetchImpl: async () => { throw new Error('down'); } });
   assert.equal(await failing('+919876543210', 'hi'), false);
 });
+
+// ---- review fixes
+
+async function startWith(opts) {
+  const sent = [];
+  const recorded = [];
+  const app = createApp({
+    verifyIdToken: async (t) => ({ 'alice-token': { uid: 'alice', email_verified: true }, 'bob-token': { uid: 'bob', email_verified: false } })[t] || Promise.reject(new Error('bad')),
+    sendSms: async (to, msg) => { sent.push({ to, msg }); return true; },
+    recordVerification: opts.recordVerification || (async (uid, phone) => { recorded.push({ uid, phone }); }),
+    allowedOrigins: [],
+    store: opts.store || new OtpStore(),
+    requireVerifiedEmail: opts.requireVerifiedEmail || false,
+  });
+  const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = async (path, body, token) => {
+    const res = await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
+  };
+  return { post, sent, recorded, code: () => sent[sent.length - 1].msg.match(/(\d{6})/)[1], close: () => server.close() };
+}
+
+test('a successful verify records server-side proof and returns the normalized phone', async () => {
+  const s = await startWith({});
+  await s.post('/otp/send', { phone: '9876543210' }, 'alice-token');
+  const r = await s.post('/otp/verify', { phone: '9876543210', otp: s.code() }, 'alice-token');
+  assert.deepEqual(r.body, { verified: true, phone: '+919876543210' });
+  assert.deepEqual(s.recorded, [{ uid: 'alice', phone: '+919876543210' }]);
+  s.close();
+});
+
+test('if the proof cannot be saved, verify fails instead of claiming success', async () => {
+  const s = await startWith({ recordVerification: async () => { throw new Error('firestore down'); } });
+  await s.post('/otp/send', { phone: '9876543210' }, 'alice-token');
+  assert.equal((await s.post('/otp/verify', { phone: '9876543210', otp: s.code() }, 'alice-token')).status, 503);
+  s.close();
+});
+
+test('the same phone cannot be texted again within 30 seconds by another account', async () => {
+  const s = await startWith({});
+  assert.equal((await s.post('/otp/send', { phone: '9876543210' }, 'alice-token')).status, 200);
+  assert.equal((await s.post('/otp/send', { phone: '9876543210' }, 'bob-token')).status, 429);
+  s.close();
+});
+
+test('a global hourly cap stops bulk sending across many accounts', async () => {
+  let t = 1_000_000;
+  const store = new OtpStore(() => t, 3);
+  const s = await startWith({ store });
+  const phones = ['9876500001', '9876500002', '9876500003', '9876500004'];
+  const users = ['alice-token', 'bob-token', 'alice-token', 'bob-token'];
+  const codes = [];
+  for (let i = 0; i < 4; i++) { t += 31_000; codes.push((await s.post('/otp/send', { phone: phones[i] }, users[i])).status); }
+  assert.deepEqual(codes, [200, 200, 200, 429]);
+  s.close();
+});
+
+test('REQUIRE_VERIFIED_EMAIL blocks accounts with an unverified email', async () => {
+  const s = await startWith({ requireVerifiedEmail: true });
+  assert.equal((await s.post('/otp/send', { phone: '9876543210' }, 'bob-token')).status, 403);
+  assert.equal((await s.post('/otp/send', { phone: '9876543210' }, 'alice-token')).status, 200);
+  s.close();
+});
+
+test('numbers with a trunk 0 are normalized and invalid Indian prefixes rejected', () => {
+  assert.equal(normalizePhone('09876543210'), '+919876543210');
+  assert.equal(normalizePhone('1234567890'), null);
+  assert.equal(normalizePhone('+0123456789012'), null);
+});
+
+test('an empty base URL falls back to the hosted textbee API', async () => {
+  let url;
+  const send = createTextbeeSender({ apiKey: 'k', baseUrl: '', fetchImpl: async (u) => { url = u; return { ok: true }; } });
+  await send('+919876543210', 'x');
+  assert.equal(url, 'https://api.textbee.dev/api/v1/gateway/send-sms');
+});

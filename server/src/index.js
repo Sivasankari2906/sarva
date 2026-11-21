@@ -1,5 +1,7 @@
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { OtpStore } from './otp.js';
 import { createApp } from './app.js';
 import { createTextbeeSender } from './textbee.js';
 
@@ -15,6 +17,10 @@ const sendSms = createTextbeeSender({
 const app = createApp({
   verifyIdToken: (token) => getAuth().verifyIdToken(token),
   sendSms,
+  recordVerification: (uid, phone) =>
+    getFirestore().doc(`phone_verifications/${uid}_${phone}`).set({ uid, phone, verifiedAt: FieldValue.serverTimestamp() }),
+  store: new OtpStore(undefined, Number(process.env.MAX_SMS_PER_HOUR || 30)),
+  requireVerifiedEmail: process.env.REQUIRE_VERIFIED_EMAIL === 'true',
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map((s) => s.trim()),
   countryCode: process.env.SMS_DEFAULT_COUNTRY_CODE || '+91',
 });

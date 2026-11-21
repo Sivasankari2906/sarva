@@ -48,6 +48,17 @@ const shorten = (text, max) => {
   return t.length <= max ? t : t.slice(0, max - 1).replace(/\s+\S*$/, '') + '…';
 };
 
+/** Keeps only http(s) links on Indian government domains (*.gov.in, *.nic.in), without user info. */
+export function safeGovUrl(value) {
+  try {
+    const u = new URL(String(value || '').trim());
+    if (!['https:', 'http:'].includes(u.protocol) || u.username || u.password) return '';
+    return /(^|\.)(gov\.in|nic\.in)$/i.test(u.hostname) ? u.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
 /** Returns a scheme object, or null for rows without a name or slug. */
 export function mapRow(row) {
   const name = String(row.name || '').trim();
@@ -82,8 +93,8 @@ export function mapRow(row) {
   if (parseBool(row.eligibility_bpl)) criteria.bpl = true;
   criteria.states = states;
 
-  const official = String(row.official_url || '').trim();
-  const apply = String(row.apply_url || '').trim();
+  const official = safeGovUrl(row.official_url);
+  const apply = safeGovUrl(row.apply_url);
   return {
     id,
     name,
@@ -91,8 +102,8 @@ export function mapRow(row) {
     category: shorten(row.category, 80),
     ministry: shorten(row.ministry, 120),
     state: states.length === 1 ? states[0] : states.join(', '),
-    officialUrl: /^https?:\/\//.test(official) ? official : '',
-    applyUrl: /^https?:\/\//.test(apply) ? apply : '',
+    officialUrl: official,
+    applyUrl: apply,
     eligibilityCriteria: criteria,
   };
 }

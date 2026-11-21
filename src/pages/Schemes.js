@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useEligibility } from '../hooks/useEligibility';
 
 export default function Schemes() {
   const { user } = useAuth();
   const { schemes, eligibility, loading } = useEligibility(user?.uid);
+  const [showAllEligible, setShowAllEligible] = useState(false);
+  const [showIneligible, setShowIneligible] = useState(false);
+  const PAGE = 50;
 
   if (loading || !user) return <div className="container">Loading schemes...</div>;
 
@@ -31,11 +34,11 @@ export default function Schemes() {
       </p>
 
       <div className="card">
-        <h3 style={{ color: '#38a169', marginBottom: '16px' }}>✓ You Are Eligible For</h3>
+        <h3 style={{ color: '#38a169', marginBottom: '16px' }}>✓ You Are Eligible For ({eligibleSchemes.length})</h3>
         {eligibleSchemes.length === 0 ? (
           <p style={{ color: '#718096' }}>Complete your profile and add documents to see eligible schemes</p>
         ) : (
-          eligibleSchemes.map(scheme => (
+          (showAllEligible ? eligibleSchemes : eligibleSchemes.slice(0, PAGE)).map(scheme => (
             <div key={scheme.id} style={{ padding: '16px', background: '#f0fff4', borderRadius: '6px', marginBottom: '12px', border: '1px solid #c6f6d5' }}>
               <strong style={{ fontSize: '16px' }}>{scheme.name}</strong>
               <p style={{ fontSize: '14px', color: '#2d3748', marginTop: '8px' }}>{scheme.description}</p>
@@ -50,9 +53,20 @@ export default function Schemes() {
         )}
       </div>
 
+      {eligibleSchemes.length > PAGE && !showAllEligible && (
+        <button className="btn" onClick={() => setShowAllEligible(true)} style={{ marginBottom: '16px' }}>
+          Show all {eligibleSchemes.length} eligible schemes
+        </button>
+      )}
+
       <div className="card">
-        <h3 style={{ color: '#718096', marginBottom: '16px' }}>✗ Not Eligible</h3>
-        {ineligibleSchemes.length === 0 ? (
+        <h3 style={{ color: '#718096', marginBottom: '16px' }}>✗ Not Eligible ({ineligibleSchemes.length})</h3>
+        {ineligibleSchemes.length > 0 && (
+          <button className="btn" onClick={() => setShowIneligible(!showIneligible)} style={{ marginBottom: '12px' }}>
+            {showIneligible ? 'Hide' : 'Show'} schemes you are not eligible for
+          </button>
+        )}
+        {!showIneligible ? null : ineligibleSchemes.length === 0 ? (
           <p style={{ color: '#718096' }}>All available schemes are eligible for you!</p>
         ) : (
           ineligibleSchemes.map(scheme => (

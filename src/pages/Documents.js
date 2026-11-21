@@ -14,7 +14,6 @@ export default function Documents() {
   const [filter, setFilter] = useState('all');
   const [otpStep, setOtpStep] = useState(false);
   const [otp, setOtp] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
   const [pendingDoc, setPendingDoc] = useState(null);
   const [verifyingDoc, setVerifyingDoc] = useState(null);
   const [verifyOtp, setVerifyOtp] = useState('');
@@ -28,48 +27,40 @@ export default function Documents() {
     setDocuments(docs);
   };
 
-  const generateOtp = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
+  // Phone verification needs the OTP server (REACT_APP_OTP_SERVER_URL). Without it, documents are
+  // saved as "Not Verified"; the app never shows a code on screen.
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Mock document-mobile verification (always succeeds for demo)
-    const isLinked = true;
-    if (!isLinked) {
-      alert('Document verification failed: This document is not linked to the provided mobile number.');
+    if (!smsOtpEnabled) {
+      await addDocument(user.uid, { ...form, status: 'valid', verified: false });
+      setForm({ type: '', documentNumber: '', issueDate: '', expiryDate: '', mobileNumber: '' });
+      setShowForm(false);
+      loadDocuments();
+      alert('Document added. Phone verification is not set up, so it is saved as Not Verified.');
       return;
     }
-    if (smsOtpEnabled) {
-      try {
-        await sendSmsOtp(form.mobileNumber);
-      } catch (err) {
-        alert(err.message);
-        return;
-      }
-      setPendingDoc(form);
-      setOtpStep(true);
-      alert(`A 6-digit code was sent by SMS to ${form.mobileNumber}.`);
-      return;
-    }
-    const otp = generateOtp();
-    setGeneratedOtp(otp);
-    setPendingDoc(form);
-    setOtpStep(true);
-    alert(`Demo mode: your OTP is ${otp}\n(Set up the OTP server to send it by SMS.)`);
-  };
-
-  const handleOtpVerify = async (e) => {
-    e.preventDefault();
-    let ok = false;
     try {
-      ok = smsOtpEnabled ? await verifySmsOtp(pendingDoc.mobileNumber, otp) : otp === generatedOtp;
+      await sendSmsOtp(form.mobileNumber);
     } catch (err) {
       alert(err.message);
       return;
     }
-    if (ok) {
-      await addDocument(user.uid, { ...pendingDoc, status: 'valid', verified: true, verifiedAt: new Date() });
+    setPendingDoc(form);
+    setOtpStep(true);
+    alert(`A 6-digit code was sent by SMS to ${form.mobileNumber}.`);
+  };
+
+  const handleOtpVerify = async (e) => {
+    e.preventDefault();
+    let result;
+    try {
+      result = await verifySmsOtp(pendingDoc.mobileNumber, otp);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+    if (result.verified) {
+      await addDocument(user.uid, { ...pendingDoc, status: 'valid', verified: true, verifiedPhone: result.phone, verifiedAt: new Date() });
       setForm({ type: '', documentNumber: '', issueDate: '', expiryDate: '', mobileNumber: '' });
       setShowForm(false);
       setOtpStep(false);
@@ -83,34 +74,27 @@ export default function Documents() {
   };
 
   const handleVerifyExisting = async (doc) => {
-    if (smsOtpEnabled) {
-      try {
-        await sendSmsOtp(doc.mobileNumber);
-      } catch (err) {
-        alert(err.message);
-        return;
-      }
-      setVerifyingDoc(doc);
-      alert(`A 6-digit code was sent by SMS to ${doc.mobileNumber}.`);
-      return;
-    }
-    const otp = generateOtp();
-    setGeneratedOtp(otp);
-    setVerifyingDoc(doc);
-    alert(`Demo mode: your OTP is ${otp}\n(Set up the OTP server to send it by SMS.)`);
-  };
-
-  const handleExistingOtpVerify = async (e) => {
-    e.preventDefault();
-    let ok = false;
     try {
-      ok = smsOtpEnabled ? await verifySmsOtp(verifyingDoc.mobileNumber, verifyOtp) : verifyOtp === generatedOtp;
+      await sendSmsOtp(doc.mobileNumber);
     } catch (err) {
       alert(err.message);
       return;
     }
-    if (ok) {
-      await updateDocument(verifyingDoc.id, { verified: true, verifiedAt: new Date() });
+    setVerifyingDoc(doc);
+    alert(`A 6-digit code was sent by SMS to ${doc.mobileNumber}.`);
+  };
+
+  const handleExistingOtpVerify = async (e) => {
+    e.preventDefault();
+    let result;
+    try {
+      result = await verifySmsOtp(verifyingDoc.mobileNumber, verifyOtp);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+    if (result.verified) {
+      await updateDocument(verifyingDoc.id, { verified: true, verifiedPhone: result.phone, verifiedAt: new Date() });
       setVerifyingDoc(null);
       setVerifyOtp('');
       loadDocuments();
@@ -187,7 +171,7 @@ export default function Documents() {
                   <input type="tel" value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} placeholder="Enter 10-digit mobile" maxLength="10" required />
                 </div>
               </div>
-              <button type="submit" className="btn btn-primary" style={{ marginTop: '16px' }}>Verify Document & Send OTP</button>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '16px' }}>{smsOtpEnabled ? 'Verify Document & Send OTP' : 'Add Document'}</button>
             </form>
           ) : (
             <form onSubmit={handleOtpVerify}>
@@ -249,7 +233,7 @@ export default function Documents() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                      {!doc.verified && (
+                      {!doc.verified && smsOtpEnabled && doc.mobileNumber && (
                         verifyingDoc?.id === doc.id ? (
                           <form onSubmit={handleExistingOtpVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <input type="text" value={verifyOtp} onChange={(e) => setVerifyOtp(e.target.value)} placeholder="Enter OTP" maxLength="6" style={{ padding: '6px', fontSize: '14px' }} required />

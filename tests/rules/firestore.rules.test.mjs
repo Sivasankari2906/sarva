@@ -21,6 +21,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'documents/d1'), { userId: 'alice', type: 'Aadhaar' });
     await setDoc(doc(db, 'medicines/m1'), { userId: 'alice', name: 'Metformin' });
     await setDoc(doc(db, 'eligibility_cache/alice'), { eligible: [] });
+    await setDoc(doc(db, 'phone_verifications/alice_+919876543210'), { uid: 'alice', phone: '+919876543210' });
   });
 });
 
@@ -81,4 +82,22 @@ test('schemes: signed-in users can read, nobody can write from the app, anonymou
 test('anonymous users and unknown collections are locked out', async () => {
   await assertFails(getDoc(doc(anon(), 'users/alice')));
   await assertFails(setDoc(doc(alice(), 'random/x'), { a: 1 }));
+});
+
+test('a document can be marked verified only with a server-recorded phone verification', async () => {
+  await assertFails(setDoc(doc(alice(), 'documents/v1'), { userId: 'alice', type: 'PAN', verified: true }));
+  await assertFails(setDoc(doc(alice(), 'documents/v2'), { userId: 'alice', type: 'PAN', verified: true, verifiedPhone: '+919111111111' }));
+  await assertSucceeds(setDoc(doc(alice(), 'documents/v3'), { userId: 'alice', type: 'PAN', verified: true, verifiedPhone: '+919876543210' }));
+  await assertFails(updateDoc(doc(alice(), 'documents/d1'), { verified: true }));
+  await assertSucceeds(updateDoc(doc(alice(), 'documents/d1'), { verified: true, verifiedPhone: '+919876543210' }));
+});
+
+test("one user cannot borrow another user's phone verification", async () => {
+  await assertFails(setDoc(doc(bob(), 'documents/b1'), { userId: 'bob', type: 'PAN', verified: true, verifiedPhone: '+919876543210' }));
+});
+
+test('phone verifications are readable by their owner and never writable from the app', async () => {
+  await assertSucceeds(getDoc(doc(alice(), 'phone_verifications/alice_+919876543210')));
+  await assertFails(getDoc(doc(bob(), 'phone_verifications/alice_+919876543210')));
+  await assertFails(setDoc(doc(bob(), 'phone_verifications/bob_+919000000000'), { uid: 'bob', phone: '+919000000000' }));
 });

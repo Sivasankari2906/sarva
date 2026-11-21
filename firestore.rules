@@ -16,12 +16,27 @@ service cloud.firestore {
       allow read, write: if isOwner(uid);
     }
 
+    // A document can only be marked verified if the OTP server recorded that this user
+    // verified that phone number (phone_verifications is written only by the server).
+    function verificationOk(data) {
+      return data.get('verified', false) != true
+        || (data.get('verifiedPhone', '') is string
+            && exists(/databases/$(database)/documents/phone_verifications/$(request.auth.uid + '_' + data.verifiedPhone)));
+    }
+
     // Documents and medicines belong to the user in the userId field.
     match /documents/{docId} {
       allow read, delete: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid
+                    && verificationOk(request.resource.data);
       allow update: if signedIn() && resource.data.userId == request.auth.uid
-                    && request.resource.data.userId == request.auth.uid;
+                    && request.resource.data.userId == request.auth.uid
+                    && verificationOk(request.resource.data);
+    }
+
+    match /phone_verifications/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
     }
 
     match /medicines/{medicineId} {

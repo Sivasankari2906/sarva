@@ -60,7 +60,8 @@ const loadStaticSchemes = async (state) => {
   const manifest = await res.json();
   const files = ['all-india.json'];
   if (manifest.states && manifest.states[state]) files.push(`states/${manifest.states[state]}.json`);
-  const parts = await Promise.all(files.map((f) => fetch(`/schemes/${f}`).then((r) => r.json())));
+  const parts = await Promise.all(files.map((f) =>
+    fetch(`/schemes/${f}`).then((r) => (r.ok ? r.json() : [])).catch(() => [])));
   return parts.flat();
 };
 
