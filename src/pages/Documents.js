@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getUserDocuments, addDocument, deleteDocument, updateDocument } from '../services/firestoreService';
 import { format, differenceInDays } from 'date-fns';
+import { smsOtpEnabled, sendSmsOtp, verifySmsOtp } from '../services/otpService';
 
 const DOC_TYPES = ['Aadhaar', 'PAN', 'Ration Card', 'Voter ID', 'Driving License', 'Passport', 'Income Certificate', 'Caste Certificate', 'Birth Certificate', 'Domicile Certificate'];
 
@@ -39,16 +40,35 @@ export default function Documents() {
       alert('Document verification failed: This document is not linked to the provided mobile number.');
       return;
     }
+    if (smsOtpEnabled) {
+      try {
+        await sendSmsOtp(form.mobileNumber);
+      } catch (err) {
+        alert(err.message);
+        return;
+      }
+      setPendingDoc(form);
+      setOtpStep(true);
+      alert(`A 6-digit code was sent by SMS to ${form.mobileNumber}.`);
+      return;
+    }
     const otp = generateOtp();
     setGeneratedOtp(otp);
     setPendingDoc(form);
     setOtpStep(true);
-    alert(`Document verified with mobile number!\nYour OTP is: ${otp}\n(In production, this would be sent via SMS)`);
+    alert(`Demo mode: your OTP is ${otp}\n(Set up the OTP server to send it by SMS.)`);
   };
 
   const handleOtpVerify = async (e) => {
     e.preventDefault();
-    if (otp === generatedOtp) {
+    let ok = false;
+    try {
+      ok = smsOtpEnabled ? await verifySmsOtp(pendingDoc.mobileNumber, otp) : otp === generatedOtp;
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+    if (ok) {
       await addDocument(user.uid, { ...pendingDoc, status: 'valid', verified: true, verifiedAt: new Date() });
       setForm({ type: '', documentNumber: '', issueDate: '', expiryDate: '', mobileNumber: '' });
       setShowForm(false);
@@ -62,16 +82,34 @@ export default function Documents() {
     }
   };
 
-  const handleVerifyExisting = (doc) => {
+  const handleVerifyExisting = async (doc) => {
+    if (smsOtpEnabled) {
+      try {
+        await sendSmsOtp(doc.mobileNumber);
+      } catch (err) {
+        alert(err.message);
+        return;
+      }
+      setVerifyingDoc(doc);
+      alert(`A 6-digit code was sent by SMS to ${doc.mobileNumber}.`);
+      return;
+    }
     const otp = generateOtp();
     setGeneratedOtp(otp);
     setVerifyingDoc(doc);
-    alert(`Your OTP is: ${otp}\n(In production, this would be sent via SMS)`);
+    alert(`Demo mode: your OTP is ${otp}\n(Set up the OTP server to send it by SMS.)`);
   };
 
   const handleExistingOtpVerify = async (e) => {
     e.preventDefault();
-    if (verifyOtp === generatedOtp) {
+    let ok = false;
+    try {
+      ok = smsOtpEnabled ? await verifySmsOtp(verifyingDoc.mobileNumber, verifyOtp) : verifyOtp === generatedOtp;
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+    if (ok) {
       await updateDocument(verifyingDoc.id, { verified: true, verifiedAt: new Date() });
       setVerifyingDoc(null);
       setVerifyOtp('');

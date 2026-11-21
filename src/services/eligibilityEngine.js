@@ -28,8 +28,21 @@ const isEligibleForScheme = (profile, documents, scheme) => {
   // Income check
   if (criteria.maxIncome && profile.income > criteria.maxIncome) return false;
   
-  // State check
-  if (criteria.states && !criteria.states.includes(profile.state)) return false;
+  // State check ("ALL" means every state)
+  if (criteria.states && criteria.states.length && !criteria.states.includes('ALL') && !criteria.states.includes(profile.state)) return false;
+
+  // Gender check ("all" or missing means anyone)
+  if (criteria.gender && criteria.gender !== 'all' && (profile.gender || '').toLowerCase() !== criteria.gender) return false;
+
+  // Caste / community check. EWS is part of the General category.
+  if (criteria.castes && criteria.castes.length) {
+    const community = profile.community === 'EWS' ? ['EWS', 'General'] : [profile.community];
+    if (!community.some((c) => criteria.castes.includes(c))) return false;
+  }
+
+  // Schemes that need a disability or a BPL card
+  if (criteria.disability && !profile.hasDisability) return false;
+  if (criteria.bpl && !profile.isBPL) return false;
   
   // Occupation check
   if (criteria.occupations && !criteria.occupations.includes(profile.occupation)) return false;

@@ -51,7 +51,26 @@ export const getAllSchemes = async () => {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
+// The full scheme catalogue (built by scripts/build-schemes.mjs) is served as static files from
+// public/schemes, so loading it costs no Firestore reads. If the files are missing, fall back to the
+// small 'schemes' collection in Firestore.
+const loadStaticSchemes = async (state) => {
+  const res = await fetch('/schemes/manifest.json');
+  if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) return null;
+  const manifest = await res.json();
+  const files = ['all-india.json'];
+  if (manifest.states && manifest.states[state]) files.push(`states/${manifest.states[state]}.json`);
+  const parts = await Promise.all(files.map((f) => fetch(`/schemes/${f}`).then((r) => r.json())));
+  return parts.flat();
+};
+
 export const getSchemesByState = async (state) => {
+  try {
+    const staticSchemes = await loadStaticSchemes(state);
+    if (staticSchemes) return staticSchemes;
+  } catch (e) {
+    // fall back to Firestore below
+  }
   const q = query(collection(db, 'schemes'), where('state', 'in', [state, 'ALL']));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

@@ -415,6 +415,18 @@ export default function Profile() {
                 <label>Annual Income (₹)</label>
                 <input type="number" value={profile.income} onChange={(e) => setProfile({ ...profile, income: e.target.value })} required />
               </div>
+              <div>
+                <label>
+                  <input type="checkbox" checked={Boolean(profile.hasDisability)} onChange={(e) => setProfile({ ...profile, hasDisability: e.target.checked })} />
+                  {' '}Person with disability
+                </label>
+              </div>
+              <div>
+                <label>
+                  <input type="checkbox" checked={Boolean(profile.isBPL)} onChange={(e) => setProfile({ ...profile, isBPL: e.target.checked })} />
+                  {' '}Below Poverty Line (BPL) card holder
+                </label>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>

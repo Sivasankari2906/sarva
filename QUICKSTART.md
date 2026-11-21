@@ -259,3 +259,24 @@ REACT_APP_USE_EMULATOR=true REACT_APP_FIREBASE_API_KEY=fake REACT_APP_FIREBASE_P
 ```
 
 With `REACT_APP_USE_EMULATOR=true` the app talks to the local Auth (port 9099) and Firestore (port 8088) emulators instead of a real project, so test data never reaches production.
+
+## SMS verification codes
+
+Document verification sends a real SMS code when the app is built with `REACT_APP_OTP_SERVER_URL` pointing at the OTP server in `server/` (see `server/README.md`). Without it the app runs in demo mode and shows the code on screen.
+
+## Scheme catalogue (4,693 schemes)
+
+The full catalogue comes from the [Indian Government Schemes Dataset](https://huggingface.co/datasets/Sumna/indian-government-schemes-2025) by SmartDuke Technologies (schemefit.com), licensed CC BY 4.0 and sourced from myscheme.gov.in. Its eligibility fields were parsed automatically, so results are estimates; the app says so and links to the official page.
+
+1. Accept the dataset terms on Hugging Face and download `Schemes.csv`.
+2. Build the static files: `npm run build:schemes -- path/to/Schemes.csv` (writes `public/schemes/`).
+3. Deploy as usual. The app loads `public/schemes/` and falls back to the Firestore `schemes` collection if the files are missing.
+
+## Tests
+
+```bash
+npm run test:unit      # eligibility engine (Jest)
+npm run test:import    # scheme importer
+npm run test:rules     # Firestore security rules (starts the emulator)
+cd server && npm test  # OTP server
+```

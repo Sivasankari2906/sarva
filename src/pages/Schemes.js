@@ -26,6 +26,9 @@ export default function Schemes() {
   return (
     <div className="container">
       <h1 style={{ marginBottom: '24px' }}>Government Schemes</h1>
+      <p style={{ fontSize: '13px', color: '#718096', marginBottom: '16px' }}>
+        Eligibility is an estimate from your profile. Always confirm on the official portal before applying.
+      </p>
 
       <div className="card">
         <h3 style={{ color: '#38a169', marginBottom: '16px' }}>✓ You Are Eligible For</h3>
@@ -38,6 +41,9 @@ export default function Schemes() {
               <p style={{ fontSize: '14px', color: '#2d3748', marginTop: '8px' }}>{scheme.description}</p>
               <div style={{ fontSize: '13px', color: '#718096', marginTop: '8px' }}>
                 State: {scheme.state} | Category: {scheme.category}
+                {scheme.officialUrl && (
+                  <> | <a href={scheme.officialUrl} target="_blank" rel="noopener noreferrer">Details and how to apply</a></>
+                )}
               </div>
             </div>
           ))
@@ -57,6 +63,9 @@ export default function Schemes() {
           ))
         )}
       </div>
+      <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '16px' }}>
+        Scheme data: <a href="https://huggingface.co/datasets/Sumna/indian-government-schemes-2025" target="_blank" rel="noopener noreferrer">Indian Government Schemes Dataset</a> by SmartDuke Technologies (schemefit.com), CC BY 4.0, sourced from myscheme.gov.in.
+      </p>
     </div>
   );
 }
