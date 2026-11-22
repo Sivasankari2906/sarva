@@ -280,3 +280,12 @@ npm run test:import    # scheme importer
 npm run test:rules     # Firestore security rules (starts the emulator)
 cd server && npm test  # OTP server
 ```
+
+## Keeping secrets out of the repo
+
+Keep Firebase service-account keys, `.env` files and SMS API keys out of git (they are in `.gitignore`). To scan every commit:
+
+```bash
+brew install gitleaks                 # open-source secret scanner
+git config core.hooksPath .githooks   # run once per clone
+```
